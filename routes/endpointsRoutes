@@ -1,0 +1,10 @@
+const express = require('express');
+const router = express.Router();
+const endpointController = require('../controllers/endpointsController');
+
+
+router.get('/1', endpointController.listUsers);
+
+router.get('/2', endpointController.listBooks);
+
+module.exports = router;

@@ -1,0 +1,76 @@
+// bookController.js
+const Book = require('../models/book');
+const User = require('../models/user');
+
+exports.listBooks = async (req, res) => {
+  try {
+    const books = await Book.find();
+
+    const bookList = [];
+
+    for (const book of books) {
+      const reservedBy = await User.find({ 'reservas.book': book._id });
+
+      const bookInfo = {
+        bookName: book.bookName,
+        bookDescription: book.bookDescription,
+        reservedBy: reservedBy.map((user) => {
+          const reservation = user.reservas.find((reservation) => reservation.book.toString() === book._id.toString());
+          return {
+            userName: user.name,
+            reservedAt: reservation.reserved_at,
+            id: user.id,
+          };
+        })
+      };
+
+      bookList.push(bookInfo);
+    }
+
+    res.json(bookList);
+  } catch (error) {
+    console.error('Error al obtener la lista de libros:', error);
+    res.status(500).json({ error: 'Ocurrió un error al obtener la lista de libros' });
+  }
+};
+
+
+exports.listUsers = async (req, res) => {
+    try {
+      const users = await User.find().populate('reservas.book');
+  
+      const userList = users.map((user) => {
+        const reservedBooks = user.reservas.map((reservation) => {
+          return {
+            id: reservation.book.id,
+            code: reservation.book.code,
+            bookName: reservation.book.bookName,
+            bookDescription: reservation.book.bookDescription
+          };
+        });
+  
+        const lastReservation = reservedBooks.length > 0 ? reservedBooks[reservedBooks.length - 1] : null;
+        const reservedBooksLastMonth = user.reservas.filter((reservation) => {
+          const reservationDate = new Date(reservation.reserved_at);
+          const lastMonth = new Date();
+          lastMonth.setMonth(lastMonth.getMonth() - 1);
+          return reservationDate >= lastMonth;
+        });
+  
+        const userInfo = {
+          userName: user.name,
+          faculty: user.faculty,
+          lastReservationDate: lastReservation ? lastReservation.reserved_at : null,
+          reservedBooksLastMonth: reservedBooksLastMonth.length,
+          reservedBooks
+        };
+  
+        return userInfo;
+      });
+  
+      res.json(userList);
+    } catch (error) {
+      console.error('Error al obtener la lista de usuarios:', error);
+      res.status(500).json({ error: 'Ocurrió un error al obtener la lista de usuarios' });
+    }
+  };
